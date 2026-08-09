@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tidc VPS 服务中心</title>
+  <script>
+    try {
+      const savedTheme = localStorage.getItem("tidc-theme") || localStorage.getItem("clouddesk-theme");
+      document.documentElement.dataset.theme = savedTheme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    } catch { document.documentElement.dataset.theme = "light"; }
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="login-page" id="loginPage">
+    <section class="login-panel">
+      <div class="login-brand"><span class="brand-mark">T</span><strong>tidc</strong><button class="theme-toggle" data-theme-toggle type="button" aria-label="切换深浅主题"><span class="theme-indicator" aria-hidden="true"></span><span data-theme-label>深色</span></button></div>
+      <div class="login-copy">
+        <p class="eyebrow">VPS CONTROL CENTER</p>
+        <h1>客户服务中心</h1>
+        <p>管理实例、续费账单与远程控制台</p>
+      </div>
+      <form id="loginForm" class="login-form">
+        <label>用户名或邮箱<input name="username" autocomplete="username" required></label>
+        <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary-button" type="submit">登录</button>
+        <div class="login-links"><button class="text-button" id="openRegistration" type="button">注册客户账户</button><button class="text-button" id="openPasswordReset" type="button">忘记密码</button></div>
+      </form>
+    </section>
+  </main>
+
+  <div class="app-shell hidden" id="appShell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">T</span><div><strong>tidc</strong><small>VPS 服务中心</small></div></div>
+      <nav class="nav" aria-label="主导航">
+        <button class="nav-item client-nav active" data-view="portal-home" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg><span>概览</span></button>
+        <button class="nav-item client-nav" data-view="my-services" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="8" x="2" y="2" rx="2"></rect><rect width="20" height="8" x="2" y="14" rx="2"></rect><path d="M6 6h.01M6 18h.01"></path></svg><span>我的实例</span></button>
+        <button class="nav-item client-nav" data-view="marketplace" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h7.78a2 2 0 0 0 2-1.61L20.12 6H5.12"></path></svg><span>购买服务器</span></button>
+        <button class="nav-item client-nav" data-view="my-billing" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2v20l2-2 2 2 2-2 2 2 2-2 2 2 2-2 2 2V2l-2 2-2-2-2 2-2-2-2 2-2-2-2 2-2-2Z"></path><path d="M16 8h-6M16 12h-6M13 16h-3"></path></svg><span>账单记录</span></button>
+
+        <button class="nav-item admin-nav active" data-view="admin-home" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="7" height="9" x="3" y="3" rx="1"></rect><rect width="7" height="5" x="14" y="3" rx="1"></rect><rect width="7" height="9" x="14" y="12" rx="1"></rect><rect width="7" height="5" x="3" y="16" rx="1"></rect></svg><span>运营概览</span></button>
+        <button class="nav-item admin-nav" data-view="customers" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span>客户账户</span></button>
+        <button class="nav-item admin-nav" data-view="plans" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7.5 4.27 9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="M3.3 7 12 12l8.7-5M12 22V12"></path></svg><span>套餐管理</span></button>
+        <button class="nav-item admin-nav" data-view="purchase-orders" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect width="8" height="4" x="8" y="2" rx="1"></rect><path d="m9 14 2 2 4-4"></path></svg><span>订单审核</span></button>
+        <button class="nav-item admin-nav" data-view="bindings" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg><span>实例绑定</span></button>
+        <button class="nav-item admin-nav" data-view="admin-vms" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="8" x="2" y="2" rx="2"></rect><rect width="20" height="8" x="2" y="14" rx="2"></rect><path d="M6 6h.01M6 18h.01"></path></svg><span>全部虚拟机</span></button>
+        <button class="nav-item admin-nav" data-view="finance" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"></rect><path d="M2 10h20M16 15h2"></path></svg><span>财务流水</span></button>
+        <button class="nav-item admin-nav" data-view="pve-settings" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2Z"></path><circle cx="12" cy="12" r="3"></circle></svg><span>PVE 设置</span></button>
+        <button class="nav-item admin-nav" data-view="mail-settings" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg><span>邮件设置</span></button>
+      </nav>
+      <div class="account-box"><span id="accountName">-</span><small id="accountRole">-</small></div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div><h1 id="viewTitle">概览</h1><p id="viewSubtitle">账户与服务状态</p></div>
+        <div class="topbar-actions"><button class="theme-toggle" data-theme-toggle type="button" aria-label="切换深浅主题"><span class="theme-indicator" aria-hidden="true"></span><span data-theme-label>深色</span></button><button class="secondary-button" id="openOwnPassword" type="button">修改密码</button><button class="secondary-button" id="logoutButton" type="button">退出登录</button></div>
+      </header>
+
+      <section class="view client-view active" id="portal-home">
+        <div class="metric-grid" id="portalMetrics"></div>
+        <div class="split-layout">
+          <section class="section-block">
+            <div class="section-head"><h2>近期到期</h2><button class="text-button" data-view-jump="my-services" type="button">查看实例</button></div>
+            <div id="expiringServices" class="row-list"></div>
+          </section>
+          <section class="section-block"><div class="section-head"><h2>最近账单</h2></div><div id="recentInvoices" class="row-list"></div></section>
+        </div>
+      </section>
+
+      <section class="view client-view" id="my-services">
+        <div class="section-head"><div><h2>我的实例</h2><p>电源、系统与控制台</p></div><button class="secondary-button" id="refreshPortal" type="button">刷新状态</button></div>
+        <div id="serviceGrid" class="service-grid"></div>
+      </section>
+
+      <section class="view client-view" id="marketplace">
+        <div class="marketplace-head"><div><span class="marketplace-kicker">SELF SERVICE</span><h2>选择服务器套餐</h2><p>使用账户余额提交订单，管理员审核并分配实例后开通。</p></div><div class="marketplace-balance"><span>可用余额</span><strong id="marketplaceBalance">¥0.00</strong><button class="secondary-button compact" data-open-recharge type="button">充值</button></div></div>
+        <div class="product-catalog" id="productCatalog"></div>
+        <section class="section-block marketplace-orders"><div class="section-head"><div><h2>我的购买订单</h2><p>管理员分配 VM 后会自动转入“我的实例”</p></div></div><div id="marketplaceOrders" class="order-list"></div></section>
+      </section>
+
+      <section class="view client-view" id="my-billing">
+        <section class="section-block"><div class="section-head"><h2>账单记录</h2></div><div class="table-wrap"><table><thead><tr><th>账单号</th><th>内容</th><th>金额</th><th>状态</th><th>日期</th></tr></thead><tbody id="clientInvoiceTable"></tbody></table></div></section>
+      </section>
+
+      <section class="view admin-view" id="admin-home">
+        <div class="metric-grid" id="adminMetrics"></div>
+        <section class="section-block"><div class="section-head"><h2>即将到期服务</h2></div><div id="adminExpiring" class="row-list"></div></section>
+      </section>
+
+      <section class="view admin-view" id="customers">
+        <div class="segmented-control" id="customerTabs" aria-label="客户账户模块">
+          <button data-customer-pane="manage" class="active" type="button">客户管理</button>
+          <button data-customer-pane="create" type="button">新建账户</button>
+        </div>
+        <section class="section-block" id="customerManagePane">
+          <div class="section-head"><div><h2>客户管理</h2><p id="customerCount">0 个客户账户</p></div><input class="compact-search" id="customerSearch" placeholder="搜索客户、用户名或 IP"></div>
+          <div class="table-wrap"><table class="customer-table"><thead><tr><th>客户</th><th>登录账户</th><th>当前余额</th><th>实例</th><th>最近登录</th><th>登录 IP</th><th>密码</th><th>操作</th></tr></thead><tbody id="customerTable"></tbody></table></div>
+        </section>
+        <form class="section-block form-stack customer-create hidden" id="clientForm">
+          <div class="section-head"><div><h2>新建账户</h2><p>创建客户资料与登录凭据</p></div></div>
+          <div class="form-grid"><label>客户名称<input name="name" required></label><label>联系方式<input name="contact"></label></div>
+          <div class="form-grid"><label>登录用户名<input name="username" required autocomplete="off"></label><label>初始密码<input name="password" type="text" minlength="8" required autocomplete="off"></label></div>
+          <label>初始余额<input name="balance" type="number" min="0" step="0.01" value="0"></label>
+          <div class="button-row"><button class="primary-button" type="submit">创建账户</button><button class="secondary-button" data-customer-pane="manage" type="button">返回客户管理</button></div>
+        </form>
+      </section>
+
+      <section class="view admin-view" id="plans">
+        <div class="two-column">
+          <form class="section-block form-stack" id="productForm">
+            <div class="section-head"><h2 id="productFormTitle">新建套餐</h2></div>
+            <input name="productId" type="hidden">
+            <div class="form-grid"><label>套餐名称<input name="name" required></label><label>地区<input name="region" required></label></div>
+            <label>NAT 公网 IP<input name="publicIp" required placeholder="例如 203.0.113.10"></label>
+            <div class="form-grid"><label>虚拟化<select name="type"><option>KVM</option><option>LXC</option></select></label><label>月售价<input name="price" type="number" min="0" step="0.01" required></label></div>
+            <div class="form-grid three"><label>CPU 核<input name="cpu" type="number" min="1" value="2"></label><label>内存 GB<input name="memory" type="number" min="1" value="4"></label><label>磁盘 GB<input name="disk" type="number" min="1" value="60"></label></div>
+            <label>月成本<input name="cost" type="number" min="0" step="0.01" value="0"></label>
+            <div class="button-row"><button class="primary-button" id="productSubmitButton" type="submit">保存套餐</button><button class="secondary-button hidden" id="cancelProductEdit" type="button">取消编辑</button></div>
+          </form>
+          <section class="section-block"><div class="section-head"><h2>套餐列表</h2></div><div id="productList" class="row-list"></div></section>
+        </div>
+      </section>
+
+      <section class="view admin-view" id="purchase-orders">
+        <section class="section-block">
+          <div class="section-head"><div><h2>购买订单审核</h2><p id="purchaseOrderCount">0 笔待审核订单</p></div><button class="secondary-button" id="refreshPurchaseResources" type="button">刷新 PVE 资源</button></div>
+          <div id="purchaseOrderList" class="order-list"></div>
+        </section>
+      </section>
+
+      <section class="view admin-view" id="bindings">
+        <div class="two-column wide-left">
+          <form class="section-block form-stack" id="serviceForm">
+            <div class="section-head"><h2>绑定 PVE 实例</h2><button class="secondary-button compact" id="refreshBindingResources" type="button">刷新 PVE 资源</button></div>
+            <div class="form-grid"><label>客户<select name="clientId" id="serviceClient" required></select></label><label>套餐<select name="productId" id="serviceProduct" required></select></label></div>
+            <label>实例名称<input name="name" required placeholder="例如 HK-Web-01"></label>
+            <div class="form-grid three"><label>PVE 节点<select name="pveNode" id="servicePveNode" required><option value="">正在读取节点...</option></select></label><label>类型<select name="pveType" id="servicePveType"><option value="qemu">KVM/QEMU</option><option value="lxc">LXC</option></select></label><label>VMID<select name="pveVmid" id="servicePveVmid" required><option value="">请先选择节点</option></select></label></div>
+            <div class="binding-resource-status" id="bindingResourceStatus">正在读取 PVE 资源...</div>
+            <div class="form-grid three"><label>NAT 内网 IP<input name="internalIp" required></label><label>端口起始<input name="portStart" type="number" min="1" max="65535" required></label><label>端口结束<input name="portEnd" type="number" min="1" max="65535" required></label></div>
+            <div class="form-grid"><label>远程桌面端口<input name="remotePort" type="number" min="1" max="65535" required></label><label>当前系统<input name="os"></label></div>
+            <div class="form-grid"><label>远程用户名<input name="remoteUsername" value="Administrator" required autocomplete="off"></label><label>远程密码<input name="remotePassword" type="password" value="QwQ2026!" required autocomplete="new-password"></label></div>
+            <div class="nat-address-preview" id="serviceNatPreview"><span>远程桌面地址</span><strong>请先选择套餐和 VMID</strong></div>
+            <div class="form-grid"><label>开通日期<input name="startDate" type="date" required></label><label>到期日期<input name="expiresAt" type="date" required></label></div>
+            <button class="primary-button" type="submit">确认绑定</button>
+          </form>
+          <section class="section-block"><div class="section-head"><h2>已绑定服务</h2><button class="secondary-button" id="syncPveVms" type="button">读取 PVE</button></div><div id="bindingList" class="row-list"></div></section>
+        </div>
+      </section>
+
+      <section class="view admin-view" id="admin-vms">
+        <section class="section-block">
+          <div class="section-head"><div><h2>全部虚拟机</h2><p id="adminVmCount">0 台已绑定虚拟机</p></div><div class="vm-list-tools"><input class="compact-search" id="adminVmSearch" placeholder="搜索 VMID、名称、客户或 IP"><button class="secondary-button" id="syncExpiryTags" type="button">同步到期标记</button><button class="secondary-button" id="refreshAdminVms" type="button">刷新状态</button></div></div>
+          <div class="table-wrap"><table class="admin-vm-table"><thead><tr><th>VMID</th><th>客户</th><th>配置</th><th>公网 / 内网</th><th>端口 / 远程地址</th><th>登录凭据</th><th>运行状态</th><th>到期时间</th><th>快捷延期</th><th>指定到期日</th><th>操作</th></tr></thead><tbody id="adminVmTable"></tbody></table></div>
+        </section>
+      </section>
+
+      <section class="view admin-view" id="finance">
+        <div class="metric-grid" id="financeMetrics"></div>
+        <section class="section-block"><div class="section-head"><div><h2>收款与续费流水</h2><p>导出当前财务数据或清空全部财务记录</p></div><div class="finance-actions"><button class="secondary-button" id="exportFinance" type="button">导出 Excel</button><button class="danger-button" id="openClearFinance" type="button">清空财务</button></div></div><div class="table-wrap"><table><thead><tr><th>日期</th><th>客户</th><th>关联服务</th><th>方式</th><th>金额</th><th>备注</th></tr></thead><tbody id="paymentTable"></tbody></table></div></section>
+      </section>
+
+      <section class="view admin-view" id="pve-settings">
+        <div class="two-column">
+          <form class="section-block form-stack" id="pveForm">
+            <div class="section-head"><h2>PVE API</h2></div>
+            <label>主机地址<input name="host" required placeholder="pve.example.com"></label>
+            <label>端口<input name="port" type="number" value="8006" required></label>
+            <label>API Token ID<input name="tokenId" required placeholder="root@pam!portal"></label>
+            <label>API Token Secret<input name="tokenSecret" type="password"></label>
+            <label class="check-line"><input name="rejectUnauthorized" type="checkbox"><span>校验证书</span></label>
+            <div class="button-row"><button class="primary-button" type="submit">保存配置</button><button class="secondary-button" id="testPve" type="button">测试连接</button></div>
+          </form>
+          <section class="section-block"><div class="section-head"><h2>连接状态</h2><button class="secondary-button" id="refreshPveHealth" type="button">重新检测</button></div><div id="pveStatus" class="connection-state">尚未测试</div><div id="pveHealth" class="pve-health"></div><div id="pveVmList" class="row-list"></div></section>
+        </div>
+      </section>
+
+      <section class="view admin-view" id="mail-settings">
+        <div class="two-column">
+          <form class="section-block form-stack" id="mailForm">
+            <div class="section-head"><div><h2>SMTP 邮件</h2><p>管理员通知与客户验证码</p></div></div>
+            <div class="form-grid"><label>SMTP 主机<input name="host" required placeholder="smtp.example.com"></label><label>端口<input name="port" type="number" min="1" max="65535" value="465" required></label></div>
+            <div class="form-grid"><label>登录账号<input name="user" autocomplete="off"></label><label>登录密码<input name="password" type="password" autocomplete="new-password"></label></div>
+            <div class="form-grid"><label>发件邮箱<input name="fromEmail" type="email" required></label><label>发件名称<input name="senderName" value="tidc"></label></div>
+            <label>网站域名（客户登录地址）<input name="portalUrl" type="url" placeholder="https://portal.example.com"></label>
+            <label>管理员通知邮箱<input name="adminEmail" type="email" placeholder="购买订单和实例到期通知将发送到这里"></label>
+            <label class="check-line"><input name="secure" type="checkbox" checked><span>使用 SSL/TLS（通常为 465 端口）</span></label>
+            <label class="check-line"><input name="rejectUnauthorized" type="checkbox" checked><span>校验 SMTP 证书</span></label>
+            <div class="notification-settings"><label class="check-line notification-master"><input name="notificationsEnabled" type="checkbox"><span>启用业务邮件通知</span></label><div class="notification-option-grid"><label class="check-line"><input name="expiry5Enabled" type="checkbox" checked><span>客户到期前 5 天</span></label><label class="check-line"><input name="expiry3Enabled" type="checkbox" checked><span>客户到期前 3 天</span></label><label class="check-line"><input name="deletionWarningEnabled" type="checkbox" checked><span>客户到期删除风险</span></label><label class="check-line"><input name="purchaseEnabled" type="checkbox" checked><span>客户实例开通</span></label><label class="check-line"><input name="renewalEnabled" type="checkbox" checked><span>客户续费成功</span></label><label class="check-line"><input name="topupEnabled" type="checkbox" checked><span>客户人工充值到账</span></label><label class="check-line"><input name="unbindEnabled" type="checkbox" checked><span>客户实例解绑</span></label><label class="check-line"><input name="adminPurchaseEnabled" type="checkbox" checked><span>管理员新订单通知</span></label><label class="check-line"><input name="adminExpiryEnabled" type="checkbox" checked><span>管理员实例到期通知</span></label></div></div>
+            <button class="primary-button" type="submit">保存邮件配置</button>
+          </form>
+          <section class="section-block form-stack"><div class="section-head"><div><h2>邮件状态</h2><p>到期提醒每 5 分钟自动扫描</p></div></div><div id="mailStatus" class="connection-state">尚未配置</div><label>测试收件邮箱<input id="mailTestEmail" type="email" placeholder="you@example.com"></label><div class="button-row"><button class="secondary-button" id="testMail" type="button">发送测试邮件</button><button class="secondary-button" id="runMailReminders" type="button">立即扫描提醒</button></div></section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="renewDialog"><form class="dialog-form" id="renewForm"><div class="dialog-head"><div><h2>续费服务</h2><p id="renewServiceName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><input name="serviceId" type="hidden"><label>续费周期<select name="months"><option value="1">1 个月</option><option value="3">3 个月</option><option value="6">6 个月</option><option value="12">12 个月</option></select></label><div class="renew-summary"><span>应付金额</span><strong id="renewAmount">¥0.00</strong></div><button class="primary-button" type="submit">余额支付并续费</button></form></dialog>
+
+  <dialog id="purchaseDialog"><form class="dialog-form" id="purchaseForm"><div class="dialog-head"><div><h2>提交购买订单</h2><p id="purchaseProductName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><input name="productId" type="hidden"><div class="purchase-summary" id="purchaseSummary"></div><label>购买周期<select name="months"><option value="1">1 个月</option><option value="3">3 个月</option><option value="6">6 个月</option><option value="12">12 个月</option></select></label><div class="purchase-total"><span>余额支付</span><strong id="purchaseAmount">¥0.00</strong></div><div class="review-note">付款后订单进入管理员审核，审核通过并分配 VM 后才会开通实例。</div><button class="primary-button" type="submit">余额支付并提交审核</button></form></dialog>
+
+  <dialog id="reinstallDialog"><form class="dialog-form" id="reinstallForm"><div class="dialog-head"><div><h2>重装系统</h2><p id="reinstallServiceName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><input name="serviceId" type="hidden"><label>系统镜像<select name="imageId" id="imageSelect" required></select></label><div class="danger-note">实例会强制关机并从安装镜像启动。系统盘数据可能丢失，请先完成备份。</div><label class="check-line"><input name="confirmed" type="checkbox" required><span>我确认重装此实例</span></label><button class="danger-button large" type="submit">开始重装</button></form></dialog>
+
+  <dialog id="topupDialog"><form class="dialog-form" id="topupForm"><div class="dialog-head"><div><h2>人工充值</h2><p id="topupClientName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><input name="clientId" type="hidden"><label>充值金额<input name="amount" type="number" min="0.01" step="0.01" required></label><label>入账方式<select name="method"><option>人工充值</option><option>支付宝</option><option>微信</option><option>USDT</option></select></label><label>充值备注<input name="note" maxlength="200" placeholder="例如：订单号、付款账号或活动赠送"></label><button class="primary-button" type="submit">确认充值入账</button></form></dialog>
+
+  <dialog id="balanceDialog"><form class="dialog-form" id="balanceForm"><div class="dialog-head"><div><h2>调整账户余额</h2><p id="balanceClientName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><input name="clientId" type="hidden"><label>调整方式<select name="operation" id="balanceOperation"><option value="subtract">余额扣款</option><option value="set">直接设定</option></select></label><label><span id="balanceAmountLabel">扣款金额</span><input name="amount" type="number" min="0.01" step="0.01" required></label><label>调整原因<input name="note" maxlength="200" required placeholder="请填写扣款或调整原因"></label><button class="primary-button" id="balanceSubmitButton" type="submit">确认扣款</button></form></dialog>
+
+  <dialog id="passwordDialog"><form class="dialog-form" id="passwordForm"><div class="dialog-head"><div><h2>强制修改密码</h2><p id="passwordClientName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><input name="clientId" type="hidden"><label>新密码（仅本次显示）<input name="password" type="text" minlength="8" required autocomplete="off"></label><button class="secondary-button" id="generatePassword" type="button">生成安全密码</button><div class="password-result hidden" id="passwordResult"><span>密码已更新，客户现有登录已失效</span><input id="passwordResultValue" readonly></div><button class="primary-button" type="submit">确认修改密码</button></form></dialog>
+
+  <dialog id="loginHistoryDialog"><div class="dialog-form"><div class="dialog-head"><div><h2>登录记录</h2><p id="loginHistoryClientName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><div id="loginHistoryList" class="row-list"></div></div></dialog>
+
+  <dialog id="clientServicesDialog" class="wide-dialog"><div class="dialog-form"><div class="dialog-head"><div><h2>客户虚拟机</h2><p id="clientServicesName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><div id="clientServicesList" class="owned-service-list"></div></div></dialog>
+
+  <dialog id="serviceCredentialsDialog"><form class="dialog-form" id="serviceCredentialsForm"><div class="dialog-head"><div><h2>编辑 VPS 登录凭据</h2><p id="serviceCredentialsName"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><input name="serviceId" type="hidden"><label>远程用户名<input name="remoteUsername" maxlength="100" required autocomplete="off"></label><label>远程密码<input name="remotePassword" type="password" maxlength="200" required autocomplete="new-password"></label><label class="check-line"><input id="showServiceCredentialPassword" type="checkbox"><span>显示正在编辑的密码</span></label><button class="secondary-button" id="generateServiceCredentialPassword" type="button">生成安全密码</button><div class="privacy-note">修改后，客户页面会立即显示新的登录凭据。本操作不会自动修改虚拟机系统内的密码，请确保填写的内容与 VPS 内实际密码一致。</div><button class="primary-button" type="submit">保存登录凭据</button></form></dialog>
+
+  <dialog id="ownPasswordDialog"><form class="dialog-form" id="ownPasswordForm"><div class="dialog-head"><div><h2>修改我的密码</h2><p id="ownPasswordAccount"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><label>当前密码<input name="currentPassword" type="password" required autocomplete="current-password"></label><label>新密码<input name="newPassword" type="password" minlength="8" required autocomplete="new-password"></label><label>确认新密码<input name="confirmPassword" type="password" minlength="8" required autocomplete="new-password"></label><button class="primary-button" type="submit">确认修改</button></form></dialog>
+
+  <dialog id="registrationDialog"><div class="dialog-form"><div class="dialog-head"><div><h2>注册客户账户</h2><p>使用邮箱验证身份</p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><form class="form-stack" id="registerRequestForm"><label>客户名称<input name="name" minlength="2" maxlength="60" required autocomplete="organization"></label><label>邮箱<input name="email" type="email" required autocomplete="email"></label><label>密码<input name="password" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label><label>确认密码<input name="confirmPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label><button class="primary-button" type="submit">发送邮箱验证码</button></form><form class="form-stack hidden" id="registerVerifyForm"><input name="registrationId" type="hidden"><div class="verification-target" id="registrationEmail"></div><label>六位验证码<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code"></label><button class="primary-button" type="submit">验证并创建账户</button><button class="secondary-button" id="restartRegistration" type="button">返回修改邮箱</button></form></div></dialog>
+
+  <dialog id="passwordResetDialog"><div class="dialog-form"><div class="dialog-head"><div><h2>通过邮箱重置密码</h2><p>仅支持已验证邮箱的客户账户</p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><form class="form-stack" id="passwordResetRequestForm"><label>注册邮箱<input name="email" type="email" required autocomplete="email"></label><button class="primary-button" type="submit">发送重置验证码</button></form><form class="form-stack hidden" id="passwordResetVerifyForm"><input name="resetId" type="hidden"><div class="verification-target" id="passwordResetEmail"></div><label>六位验证码<input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code"></label><label>新密码<input name="password" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label><label>确认新密码<input name="confirmPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label><button class="primary-button" type="submit">验证并重置密码</button><button class="secondary-button" id="restartPasswordReset" type="button">返回修改邮箱</button></form></div></dialog>
+
+  <dialog id="rechargeDialog"><div class="dialog-form"><div class="dialog-head"><div><h2>账户充值</h2><p>联系客服完成充值入账</p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><div class="support-contact"><span>客服 QQ</span><input id="supportQqValue" value="3348146900" readonly aria-label="客服 QQ"></div><div class="button-row"><button class="secondary-button" id="copySupportQq" type="button">复制 QQ</button><a class="primary-button contact-link" href="tencent://message/?uin=3348146900&amp;Site=tidc&amp;Menu=yes">打开 QQ</a></div></div></dialog>
+
+  <dialog id="clearFinanceDialog"><form class="dialog-form" id="clearFinanceForm"><div class="dialog-head"><div><h2>清空全部财务</h2><p>操作前会自动创建服务器本地备份</p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div><div class="danger-note">将清空客户余额、账单、收付款、支出、购买订单和财务操作记录。客户账户、套餐、实例和 PVE 绑定不会删除。</div><label>输入“清空财务”确认<input name="confirmation" required autocomplete="off" placeholder="清空财务"></label><button class="danger-button large" type="submit">确认清空财务</button></form></dialog>
+
+  <dialog id="resourceStatsDialog" class="resource-stats-dialog"><div class="resource-stats-shell">
+    <div class="dialog-head"><div><h2>资源统计</h2><p id="resourceStatsService"></p></div><button class="icon-button" data-close-dialog type="button" aria-label="关闭">×</button></div>
+    <div class="resource-stats-toolbar">
+      <div class="resource-tabs" id="resourceStatsTabs" role="tablist" aria-label="统计指标">
+        <button class="active" data-stats-metric="cpu" type="button" role="tab">CPU</button>
+        <button data-stats-metric="memory" type="button" role="tab">内存</button>
+        <button data-stats-metric="bandwidth" type="button" role="tab">带宽</button>
+        <button data-stats-metric="diskio" type="button" role="tab">磁盘 IO</button>
+        <button data-stats-metric="traffic" type="button" role="tab">流量</button>
+      </div>
+      <div class="resource-refresh-controls"><label class="stats-auto-refresh"><input id="resourceStatsAutoRefresh" type="checkbox" checked><span>自动刷新 30 秒</span></label><button class="secondary-button compact" id="refreshResourceStats" type="button">立即刷新</button><label class="stats-timeframe">时间范围<select id="resourceStatsTimeframe"><option value="hour">最近 1 小时</option><option value="day" selected>最近 24 小时</option><option value="week">最近 7 天</option><option value="month">最近 30 天</option><option value="year">最近 1 年</option></select></label></div>
+    </div>
+    <div class="resource-stats-status" id="resourceStatsStatus" aria-live="polite">正在读取统计数据...</div>
+    <section class="resource-chart-panel">
+      <div class="resource-chart-head"><div><h3 id="resourceChartTitle">CPU 占用量</h3><p id="resourceChartRange">最近 24 小时</p></div><div id="resourceChartLegend" class="resource-chart-legend"></div></div>
+      <div class="resource-chart" id="resourceChart" role="img" aria-label="资源历史统计图"></div>
+      <div class="resource-chart-summary" id="resourceChartSummary"></div>
+    </section>
+  </div></dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>

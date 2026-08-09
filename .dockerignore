@@ -1,0 +1,9 @@
+node_modules/
+data/
+.git/
+.github/
+deploy/
+*.bat
+README.md
+.gitignore
+.dockerignore

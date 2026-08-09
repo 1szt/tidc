@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VNC 控制台</title>
+  <link rel="stylesheet" href="console.css">
+</head>
+<body>
+  <header class="console-toolbar">
+    <div><strong id="consoleName">VNC 控制台</strong><span id="consoleStatus">正在连接...</span></div>
+    <nav>
+      <button id="sendCad" type="button">Ctrl+Alt+Del</button>
+      <button id="fullscreen" type="button">全屏</button>
+      <button id="disconnect" type="button">断开</button>
+    </nav>
+  </header>
+  <main id="screen" aria-label="VNC 远程屏幕"></main>
+  <div class="console-error hidden" id="consoleError"></div>
+  <script type="module" src="console.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "tidc-vps-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VPS customer self-service portal with billing and Proxmox VE integration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:novnc": "esbuild ./node_modules/@novnc/novnc/lib/rfb.js --bundle --format=esm --platform=browser --outfile=./vendor/novnc.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@novnc/novnc": "1.5.0",
+    "nodemailer": "^9.0.5"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.11"
+  }
+}
