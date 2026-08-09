@@ -13,9 +13,6 @@ RUN npm run build:novnc
 FROM node:18-alpine
 WORKDIR /app
 
-# 安全：以非 root 用户运行
-RUN addgroup -S tidc && adduser -S tidc -G tidc
-
 # 仅安装生产依赖，保持镜像精简
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev && npm cache clean --force
@@ -26,10 +23,9 @@ COPY *.html ./
 COPY *.css ./
 COPY assets/ ./assets/
 
-# 确保数据目录存在且有写入权限
-RUN mkdir -p /app/data && chown -R tidc:tidc /app
+# 确保数据目录存在（以 root 运行，写入无权限限制）
+RUN mkdir -p /app/data
 
-USER tidc
 EXPOSE 3000
 ENV PORT=3000
 

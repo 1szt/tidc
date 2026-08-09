@@ -1,0 +1,27 @@
+services:
+  tidc:
+    image: ghcr.io/1szt/tidc:main
+    container_name: tidc
+    restart: unless-stopped
+    # 以 root 运行整个容器
+    user: root
+    ports:
+      # 直连访问；如果前面有 nginx/Caddy 反代，可以注释掉这一行
+      - "3000:3000"
+    environment:
+      # 端口保持默认即可，如需修改请与上面 ports 的右边保持一致
+      - PORT=3000
+      # 位于 nginx/Caddy 等反代之后时设为 1，以正确获取客户端真实 IP
+      - TRUST_PROXY=0
+    volumes:
+      # 命名卷挂载数据目录（用户、账单、配置、备份等）
+      - data:/app/data
+    # 可选：限制资源占用
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 512M
+
+volumes:
+  data:
+    name: tidc-data
