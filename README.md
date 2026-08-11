@@ -70,6 +70,12 @@ Token 至少需要目标虚拟机的审计、电源管理、控制台和配置�
 
 VNC 使用项目内置的官方 noVNC 1.5 客户端和服务器端 WebSocket 转发，不依赖 PVE 主机的 `/usr/share/novnc-pve` 静态文件。客户只能为自己绑定的实例申请 45 秒临时票据，PVE API Token 不会发送到客户浏览器。
 
+### Windows 密码重置
+
+Windows KVM/QEMU 虚拟机需要在 PVE 的 VM 选项中启用 QEMU Guest Agent，并在 Windows 内安装、启动 `qemu-ga-x86_64.msi` 和对应的 VirtIO Serial 驱动。客户可在“我的实例”生成随机强密码并自助重置；PVE 返回成功后，系统才会保存新的当前密码、写入不含密码的审计记录，并向客户邮箱发送新密码和后台地址。管理员可在“全部虚拟机”重置密码，管理员操作不会发送客户邮件。
+
+客户付款订单经管理员审核并分配 KVM/QEMU VM 时，系统会先通过 Guest Agent 设置随机安全密码，成功后才完成开通。若 Guest Agent 不在线，订单保持待审核状态。管理员从“实例绑定”直接添加的虚拟机不会自动重置密码，仍使用管理员填写的登录凭据。已明确标记为 Linux 或 LXC 的实例不会显示 Windows 密码重置入口。
+
 ### VNC 只能在代理网络下连接
 
 客户浏览器不应直接访问 PVE 8006 端口。浏览器只连接 tidc 网站的同源 WebSocket，由 Node.js 服务端转发到 PVE。生产环境应让网站统一使用 HTTPS 443：
@@ -93,4 +99,4 @@ VNC 使用项目内置的官方 noVNC 1.5 客户端和服务器端 WebSocket 转
 
 生产环境必须使用 Nginx、Caddy 或其他反向代理为站点启用 HTTPS，避免登录密码和注册信息通过明文 HTTP 传输。
 
-登录 IP 默认读取直接连接地址。如果生产环境通过 Nginx、Caddy 或 Cloudflare 反向代理，请确认代理会覆盖 `X-Forwarded-For`，并设置环境变量 `TRUST_PROXY=1` 后启动，系统才会采用转发后的客户公网 IP。
+登录 IP 支持 `X-Forwarded-For`、`X-Real-IP` 和 `CF-Connecting-IP`。默认 `TRUST_PROXY=auto`，会信任来自 Docker 私网、回环和链路本地地址的反向代理，并从代理链右侧验证后提取客户公网 IP。可按部署结构设置：`TRUST_PROXY=0` 完全关闭；`TRUST_PROXY=1` 表示网站前只有一层代理；`TRUST_PROXY=2` 表示 Cloudflare + Nginx 等两层代理；也可填写逗号分隔的可信代理 CIDR，例如 `TRUST_PROXY=172.18.0.0/16,10.0.0.0/8`。生产环境必须让最后一层代理覆盖或正确追加 `X-Forwarded-For`，不要使用 `TRUST_PROXY=all`，除非应用端口完全无法被公网直接访问。

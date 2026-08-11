@@ -6,9 +6,11 @@ const path = require("path");
 const { URL } = require("url");
 const nodemailer = require("nodemailer");
 const { mailTemplate } = require("./mail-template");
+const { createClientIpResolver } = require("./proxy-ip");
+const { generateWindowsPassword, prepareWindowsPasswordReset, recordWindowsPasswordReset } = require("./windows-password");
 
 const PORT = Number(process.env.PORT || 3000);
-const TRUST_PROXY = process.env.TRUST_PROXY === "1";
+const resolveClientIp = createClientIpResolver(process.env.TRUST_PROXY);
 const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
@@ -268,9 +270,7 @@ function cookieMap(req) {
 }
 
 function clientIp(req) {
-  let value = String(req.socket.remoteAddress || "unknown");
-  if (TRUST_PROXY && req.headers["x-forwarded-for"]) value = String(req.headers["x-forwarded-for"]).split(",")[0].trim();
-  return value.replace(/^::ffff:/, "") || "unknown";
+  return resolveClientIp(req);
 }
 
 function currentUser(req, state) {
@@ -401,6 +401,7 @@ function publicMailConfig(config) {
     renewalEnabled: config.renewalEnabled !== false,
     topupEnabled: config.topupEnabled !== false,
     unbindEnabled: config.unbindEnabled !== false,
+    passwordResetEnabled: config.passwordResetEnabled !== false,
     adminPurchaseEnabled: config.adminPurchaseEnabled !== false,
     adminExpiryEnabled: config.adminExpiryEnabled !== false,
     lastReminderRunAt: readJson(MAIL_LOG_FILE, { lastRunAt: null }).lastRunAt || null
@@ -545,6 +546,30 @@ async function sendTopupNotification(state, client, adjustment) {
   const subject = `充值到账：¥${amount.toFixed(2)}`;
   const text = `${recipient.name}，您好：\n\n管理员已为您的 tidc 账户充值 ¥${amount.toFixed(2)}。\n入账方式：${adjustment.method || "人工充值"}\n充值备注：${adjustment.note || "账户充值"}\n当前余额：¥${Number(adjustment.newBalance || 0).toFixed(2)}\n\n您现在可以登录客户后台购买或续费 VPS。`;
   const html = mailTemplate({ label: "BALANCE CREDITED", title: "充值已到账", intro: `${recipient.name}，管理员人工充值已处理完成，款项已经计入您的 tidc 账户。`, details: [["充值金额", `¥${amount.toFixed(2)}`], ["入账方式", adjustment.method || "人工充值"], ["充值备注", adjustment.note || "账户充值"], ["当前余额", `¥${Number(adjustment.newBalance || 0).toFixed(2)}`], ["入账时间", new Date().toLocaleString("zh-CN", { timeZone: BUSINESS_TIME_ZONE, hour12: false })]], actionUrl: config.portalUrl, accent: "#16866f" });
+  await sendConfiguredMail(recipient.email, subject, text, html);
+  return true;
+}
+
+function requirePasswordResetMail(state, service) {
+  const config = readJson(MAIL_FILE, {});
+  if (!config.notificationsEnabled || config.passwordResetEnabled === false) {
+    throw Object.assign(new Error("客户密码重置邮件尚未启用，请联系管理员"), { statusCode: 409 });
+  }
+  const recipient = notificationRecipient(state, service.clientId);
+  if (!recipient) throw Object.assign(new Error("客户账户未绑定有效邮箱，暂时无法自助重置密码"), { statusCode: 409 });
+  mailTransport(config);
+  return { config, recipient };
+}
+
+async function sendWindowsPasswordResetNotification(state, service, password) {
+  const { config, recipient } = requirePasswordResetMail(state, service);
+  const product = state.products.find((item) => item.id === service.productId);
+  const publicHost = product?.publicIp || service.ipv4 || "";
+  const remoteAddress = publicHost && service.remotePort ? `${publicHost}:${service.remotePort}` : publicHost || "未配置";
+  const resetTime = new Date().toLocaleString("zh-CN", { timeZone: BUSINESS_TIME_ZONE, hour12: false });
+  const subject = `Windows 密码重置成功：${service.name}`;
+  const text = `${recipient.name}，您好：\n\n您的实例 ${service.name} 已通过客户后台成功重置 Windows 密码。\nVMID：${service.pveVmid || "-"}\n远程地址：${remoteAddress}\nWindows 用户名：${service.remoteUsername || "Administrator"}\n当前密码：${password}\n重置时间：${resetTime}\n\n请妥善保存新密码。如非本人操作，请立即联系管理员。`;
+  const html = mailTemplate({ label: "WINDOWS PASSWORD RESET", title: "Windows 密码重置成功", intro: `${recipient.name}，您的实例登录密码已经更新，以下为当前有效凭据。`, details: [["实例名称", service.name], ["VMID", service.pveVmid || "-"], ["远程地址", remoteAddress], ["Windows 用户名", service.remoteUsername || "Administrator"], ["当前密码", password], ["重置时间", resetTime]], note: "请妥善保存新密码。如非本人操作，请立即联系管理员。", actionUrl: portalActionUrl(config, "my-services"), accent: "#16866f" });
   await sendConfiguredMail(recipient.email, subject, text, html);
   return true;
 }
@@ -739,6 +764,20 @@ function productType(product) {
 function serviceApiPath(service) {
   if (!service.pveNode || !service.pveVmid) throw Object.assign(new Error("服务尚未绑定 PVE 虚拟机"), { statusCode: 409 });
   return `/nodes/${encodeURIComponent(service.pveNode)}/${serviceType(service)}/${encodeURIComponent(service.pveVmid)}`;
+}
+
+async function resetPveWindowsPassword(service, password) {
+  const credentials = prepareWindowsPasswordReset(service, password);
+  try {
+    await pveRequest(`${serviceApiPath(service)}/agent/set-user-password`, "POST", credentials);
+  } catch (error) {
+    const reason = String(error.message || "PVE Guest Agent 请求失败");
+    const hint = /guest agent|qemu agent|not running|not configured/i.test(reason)
+      ? "请确认虚拟机正在运行，并已启用及安装 QEMU Guest Agent"
+      : reason;
+    throw Object.assign(new Error(`Windows 密码重置失败：${hint}`), { statusCode: error.statusCode || 502 });
+  }
+  return credentials;
 }
 
 const RESOURCE_TIMEFRAMES = new Set(["hour", "day", "week", "month", "year"]);
@@ -1098,11 +1137,30 @@ async function handlePortal(req, res, pathname, state) {
     return sendJson(res, 200, { ok: true, data: await resourceStatsPayload(req, service) });
   }
 
-  const match = pathname.match(/^\/api\/portal\/services\/([^/]+)\/(renew|action|reinstall|vnc)$/);
+  const match = pathname.match(/^\/api\/portal\/services\/([^/]+)\/(renew|action|reinstall|vnc|reset-password)$/);
   if (!match || req.method !== "POST") return sendError(res, 404, "接口不存在");
   const service = ownedService(state, user, decodeURIComponent(match[1]));
   const operation = match[2];
   const body = await readBody(req);
+
+  if (operation === "reset-password") {
+    requirePasswordResetMail(state, service);
+    const credentials = await resetPveWindowsPassword(service, body.password);
+    const resetAt = new Date().toISOString();
+    recordWindowsPasswordReset(service, { ...credentials, actorId: user.id, source: "client", at: resetAt });
+    addLog(state, user, service, "reset-windows-password", `客户自助重置 ${credentials.username} 密码；VM ${service.pveVmid}`);
+    writeJson(DB_FILE, state);
+    let mailSent = true;
+    let warning = "";
+    try {
+      await sendWindowsPasswordResetNotification(state, service, credentials.password);
+    } catch (error) {
+      mailSent = false;
+      warning = `Windows 密码已成功重置并保存，但邮件发送失败：${error.message}`;
+      console.error(`Windows 密码重置邮件发送失败 (${service.id})：${error.message}`);
+    }
+    return sendJson(res, 200, { ok: true, data: await portalPayload(state, user), reset: { resetAt, mailSent }, warning });
+  }
 
   if (operation === "renew") {
     const months = Number(body.months);
@@ -1287,6 +1345,11 @@ async function handleAdmin(req, res, pathname, state) {
       remoteUsername: "Administrator", remotePassword: "QwQ2026!", os: "待安装",
       allowedImageIds: state.osTemplates.filter((item) => item.enabled !== false && item.pveType === pveType).map((item) => item.id)
     };
+    if (pveType === "qemu") {
+      const generatedPassword = generateWindowsPassword();
+      const credentials = await resetPveWindowsPassword(service, generatedPassword);
+      recordWindowsPasswordReset(service, { ...credentials, actorId: user.id, source: "purchase-approval" });
+    }
     state.services.push(service);
     order.status = "provisioned";
     order.serviceId = service.id;
@@ -1298,7 +1361,7 @@ async function handleAdmin(req, res, pathname, state) {
     const invoice = state.invoices.find((item) => item.id === order.invoiceId);
     if (invoice) { invoice.serviceId = service.id; invoice.title = `${product.name} ${order.months} 个月购买`; }
     state.payments.filter((item) => item.orderId === order.id).forEach((item) => { item.serviceId = service.id; });
-    addLog(state, user, service, "approve-purchase", `${order.id}；手动分配 ${pveNode}/${pveVmid}`);
+    addLog(state, user, service, "approve-purchase", `${order.id}；手动分配 ${pveNode}/${pveVmid}${pveType === "qemu" ? "；已通过 Guest Agent 设置随机 Windows 密码" : ""}`);
     writeJson(DB_FILE, state);
     void sendServiceNotification(state, service, "purchase", { months: order.months, amount: order.amount }).catch((error) => console.error(`开通邮件发送失败：${error.message}`));
     return sendJson(res, 200, { ok: true, data: publicState(state), order, service });
@@ -1336,11 +1399,20 @@ async function handleAdmin(req, res, pathname, state) {
     return sendJson(res, 200, { ok: true, data: publicState(state) });
   }
 
-  const serviceOperationMatch = pathname.match(/^\/api\/admin\/services\/([^/]+)\/(action|vnc|extend|expiry)$/);
+  const serviceOperationMatch = pathname.match(/^\/api\/admin\/services\/([^/]+)\/(action|vnc|extend|expiry|reset-password)$/);
   if (req.method === "POST" && serviceOperationMatch) {
     const service = ownedService(state, user, decodeURIComponent(serviceOperationMatch[1]));
     const operation = serviceOperationMatch[2];
     const body = await readBody(req);
+
+    if (operation === "reset-password") {
+      const credentials = await resetPveWindowsPassword(service, body.password);
+      const resetAt = new Date().toISOString();
+      recordWindowsPasswordReset(service, { ...credentials, actorId: user.id, source: "admin", at: resetAt });
+      addLog(state, user, service, "reset-windows-password", `管理员重置 ${credentials.username} 密码；VM ${service.pveVmid}`);
+      writeJson(DB_FILE, state);
+      return sendJson(res, 200, { ok: true, data: publicState(state), reset: { resetAt, mailSent: false } });
+    }
 
     if (operation === "action") {
       const allowed = new Set(["start", "shutdown", "reboot", "stop"]);
@@ -1496,6 +1568,7 @@ async function handleAdmin(req, res, pathname, state) {
       renewalEnabled: body.renewalEnabled !== false,
       topupEnabled: body.topupEnabled !== false,
       unbindEnabled: body.unbindEnabled !== false,
+      passwordResetEnabled: body.passwordResetEnabled !== false,
       adminPurchaseEnabled: body.adminPurchaseEnabled !== false,
       adminExpiryEnabled: body.adminExpiryEnabled !== false
     };
@@ -1703,6 +1776,7 @@ const server = http.createServer(async (req, res) => {
 server.on("upgrade", handleConsoleUpgrade);
 
 server.listen(PORT, () => {
+  console.log(`Client IP proxy mode: ${resolveClientIp.config.label}`);
   console.log(`tidc VPS 服务中心已启动：http://localhost:${PORT}`);
 });
 

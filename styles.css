@@ -496,6 +496,8 @@ dialog::backdrop { background: var(--overlay); }
 .danger-note { padding: 12px; border: 1px solid var(--danger-border); border-radius: 7px; background: var(--danger-soft); color: var(--danger); font-size: 13px; line-height: 1.6; }
 .password-result { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--success-border); border-radius: 7px; background: var(--success-soft); color: var(--success); font-size: 12px; }
 .password-result input { font-family: Consolas, monospace; font-weight: 800; }
+.credential-reset-meta { display: block; color: var(--muted); font-size: 10px; font-weight: 600; line-height: 1.5; }
+.password-reset-action { border-color: var(--warning-border) !important; background: var(--warning-soft) !important; color: var(--warning) !important; }
 .verification-target { padding: 12px; border: 1px solid var(--success-border); border-radius: 7px; background: var(--success-soft); color: var(--success); overflow-wrap: anywhere; font-size: 13px; font-weight: 700; text-align: center; }
 .support-contact { display: grid; gap: 8px; padding: 18px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-alt); text-align: center; }
 .support-contact span { color: var(--muted); font-size: 12px; }

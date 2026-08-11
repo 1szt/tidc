@@ -34,7 +34,7 @@ const els = Object.fromEntries([
   "testPve", "refreshPveHealth", "pveStatus", "pveHealth", "pveVmList", "renewDialog", "renewForm", "renewServiceName", "renewAmount", "purchaseDialog", "purchaseForm", "purchaseProductName", "purchaseSummary", "purchaseAmount",
   "reinstallDialog", "reinstallForm", "reinstallServiceName", "imageSelect", "topupDialog", "topupForm", "topupClientName", "balanceDialog", "balanceForm", "balanceClientName", "balanceOperation", "balanceAmountLabel", "balanceSubmitButton",
   "passwordDialog", "passwordForm", "passwordClientName", "generatePassword", "passwordResult", "passwordResultValue",
-  "loginHistoryDialog", "loginHistoryClientName", "loginHistoryList", "clientServicesDialog", "clientServicesName", "clientServicesList", "serviceCredentialsDialog", "serviceCredentialsForm", "serviceCredentialsName", "showServiceCredentialPassword", "generateServiceCredentialPassword", "ownPasswordDialog", "ownPasswordForm", "ownPasswordAccount",
+  "loginHistoryDialog", "loginHistoryClientName", "loginHistoryList", "clientServicesDialog", "clientServicesName", "clientServicesList", "serviceCredentialsDialog", "serviceCredentialsForm", "serviceCredentialsName", "showServiceCredentialPassword", "generateServiceCredentialPassword", "vmPasswordResetDialog", "vmPasswordResetForm", "vmPasswordResetTitle", "vmPasswordResetService", "vmPasswordResetNotice", "showVmPasswordReset", "generateVmPassword", "vmPasswordResetSubmit", "ownPasswordDialog", "ownPasswordForm", "ownPasswordAccount",
   "registrationDialog", "registerRequestForm", "registerVerifyForm", "registrationEmail", "restartRegistration", "passwordResetDialog", "passwordResetRequestForm", "passwordResetVerifyForm", "passwordResetEmail", "restartPasswordReset", "clearFinanceDialog", "clearFinanceForm",
   "mailForm", "mailStatus", "mailTestEmail", "testMail", "runMailReminders", "rechargeDialog", "supportQqValue", "copySupportQq",
   "resourceStatsDialog", "resourceStatsService", "resourceStatsTabs", "resourceStatsTimeframe", "resourceStatsAutoRefresh", "refreshResourceStats", "resourceStatsStatus", "resourceChartTitle", "resourceChartRange", "resourceChartLegend", "resourceChart", "resourceChartSummary", "toast"
@@ -126,7 +126,7 @@ function renderPortal() {
   )).join("") || empty("暂无服务");
 
   els.recentInvoices.innerHTML = portal.invoices.slice(0, 5).map((invoice) => rowItem(invoice.title, invoice.id, money(invoice.amount), invoice.status === "paid" ? "success" : "warning")).join("") || empty("暂无账单");
-  els.serviceGrid.innerHTML = portal.services.map(serviceCard).join("") || empty("暂无绑定实例");
+  els.serviceGrid.innerHTML = sortServicesByVmid(portal.services).map(serviceCard).join("") || empty("暂无绑定实例");
   renderMarketplace();
   els.clientInvoiceTable.innerHTML = portal.invoices.map((invoice) => `
     <tr><td>${escapeHtml(invoice.id)}</td><td>${escapeHtml(invoice.title)}</td><td>${money(invoice.amount)}</td><td>${statusBadge(invoice.status)}</td><td>${escapeHtml(invoice.createdAt || "-")}</td></tr>
@@ -166,6 +166,7 @@ function serviceCard(service) {
         <button class="secondary-button compact" data-vm-action="shutdown" data-service-id="${escapeHtml(service.id)}" type="button">关机</button>
         <button class="secondary-button compact" data-vm-action="reboot" data-service-id="${escapeHtml(service.id)}" type="button">重启</button>
         <button class="secondary-button compact" data-reinstall="${escapeHtml(service.id)}" type="button">重装系统</button>
+        ${isWindowsPasswordService(service) ? `<button class="secondary-button compact password-reset-action" data-reset-vm-password="${escapeHtml(service.id)}" data-reset-mode="client" type="button">重置 Windows 密码</button>` : ""}
         <button class="secondary-button compact" data-vnc="${escapeHtml(service.id)}" type="button">VNC 控制台</button>
       </div>
     </article>
@@ -223,13 +224,13 @@ function renderAdmin() {
     );
   }).join("") || empty("暂无套餐");
 
-  els.serviceClient.innerHTML = adminState.clients.map((client) => option(client.id, client.name)).join("");
+  els.serviceClient.innerHTML = adminState.clients.map((client) => option(client.id, clientEmail(client.id))).join("");
   els.serviceProduct.innerHTML = activeProducts.map((product) => option(product.id, `${product.name} · ${productHardwareSpec(product)} · ${product.publicIp || "未设置公网 IP"} · ${money(product.price)}/月`)).join("");
   renderBindingOptions();
   updateServiceNatPreview();
-  els.bindingList.innerHTML = adminState.services.map((service) => rowItem(
+  els.bindingList.innerHTML = sortServicesByVmid(adminState.services).map((service) => rowItem(
     service.name,
-    `${clientName(service.clientId)} · ${hardwareSpec(service)} · ${service.pveNode || "-"}/${service.pveVmid || "-"} · ${service.internalIp || "无内网 IP"} · ${natPortRange(service)} · ${remoteAccessAddress(service)}`,
+    `${clientEmail(service.clientId)} · ${hardwareSpec(service)} · ${service.pveNode || "-"}/${service.pveVmid || "-"} · ${service.internalIp || "无内网 IP"} · ${natPortRange(service)} · ${remoteAccessAddress(service)}`,
     `<div class="binding-row-actions"><span class="${daysLeft(service.expiresAt) <= 7 ? "danger-text" : ""}">${escapeHtml(expiryText(service.expiresAt))}</span><button class="secondary-button compact" data-edit-service-credentials="${escapeHtml(service.id)}" type="button">编辑凭据</button><button class="danger-button compact" data-unbind-service="${escapeHtml(service.id)}" type="button">解绑</button></div>`,
     "",
     true
@@ -414,6 +415,7 @@ function wireEvents() {
     const adminExtend = event.target.closest("[data-admin-extend]");
     const adminSetExpiry = event.target.closest("[data-admin-set-expiry]");
     const editServiceCredentials = event.target.closest("[data-edit-service-credentials]");
+    const resetVmPassword = event.target.closest("[data-reset-vm-password]");
     const topup = event.target.closest("[data-topup]");
     const balanceAdjust = event.target.closest("[data-balance-adjust]");
     const deleteClient = event.target.closest("[data-delete-client]");
@@ -445,6 +447,7 @@ function wireEvents() {
     if (adminExtend) await extendAdminVm(adminExtend.dataset.adminExtend);
     if (adminSetExpiry) await setAdminVmExpiry(adminSetExpiry.dataset.adminSetExpiry);
     if (editServiceCredentials) openServiceCredentials(editServiceCredentials.dataset.editServiceCredentials);
+    if (resetVmPassword) openVmPasswordReset(resetVmPassword.dataset.resetVmPassword, resetVmPassword.dataset.resetMode);
     if (topup) openTopup(topup.dataset.topup);
     if (balanceAdjust) openBalanceAdjust(balanceAdjust.dataset.balanceAdjust);
     if (deleteClient) await removeClient(deleteClient.dataset.deleteClient);
@@ -631,6 +634,37 @@ function wireEvents() {
     finally { button.disabled = false; }
   });
 
+  els.showVmPasswordReset.addEventListener("change", () => {
+    els.vmPasswordResetForm.elements.password.type = els.showVmPasswordReset.checked ? "text" : "password";
+  });
+  els.generateVmPassword.addEventListener("click", () => {
+    els.vmPasswordResetForm.elements.password.value = generateSecurePassword(18);
+    els.showVmPasswordReset.checked = true;
+    els.vmPasswordResetForm.elements.password.type = "text";
+  });
+  els.vmPasswordResetForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = formData(els.vmPasswordResetForm);
+    const isAdmin = data.mode === "admin" && session?.role === "admin";
+    const prefix = isAdmin ? "/api/admin/services" : "/api/portal/services";
+    const button = event.submitter;
+    button.disabled = true;
+    try {
+      const payload = await api(`${prefix}/${encodeURIComponent(data.serviceId)}/reset-password`, { method: "POST", body: JSON.stringify({ password: data.password }) });
+      if (isAdmin) {
+        adminState = payload.data;
+        renderAdmin();
+      } else {
+        portal = payload.data;
+        renderPortal();
+      }
+      els.vmPasswordResetDialog.close();
+      els.vmPasswordResetForm.reset();
+      toast(payload.warning || (isAdmin ? "Windows 密码已重置并保存，未向客户发送邮件" : "Windows 密码已重置并保存，成功邮件已发送"));
+    } catch (error) { toast(error.message); }
+    finally { button.disabled = false; }
+  });
+
   els.topupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = formData(els.topupForm);
@@ -721,7 +755,7 @@ function wireEvents() {
     const data = formData(els.mailForm);
     data.secure = els.mailForm.elements.secure.checked;
     data.rejectUnauthorized = els.mailForm.elements.rejectUnauthorized.checked;
-    for (const name of ["notificationsEnabled", "expiry5Enabled", "expiry3Enabled", "deletionWarningEnabled", "purchaseEnabled", "renewalEnabled", "topupEnabled", "unbindEnabled", "adminPurchaseEnabled", "adminExpiryEnabled"]) {
+    for (const name of ["notificationsEnabled", "expiry5Enabled", "expiry3Enabled", "deletionWarningEnabled", "purchaseEnabled", "renewalEnabled", "topupEnabled", "unbindEnabled", "passwordResetEnabled", "adminPurchaseEnabled", "adminExpiryEnabled"]) {
       data[name] = els.mailForm.elements[name].checked;
     }
     button.disabled = true;
@@ -1285,7 +1319,7 @@ function renderCustomerTable() {
 function renderAdminVmTable() {
   if (!adminState || !els.adminVmTable) return;
   const query = String(els.adminVmSearch.value || "").trim().toLowerCase();
-  const services = adminState.services.filter((service) => `${service.name} ${clientName(service.clientId)} ${hardwareSpec(service)} ${service.pveVmid || ""} ${service.internalIp || ""} ${productPublicIp(service)} ${remoteAccessAddress(service)}`.toLowerCase().includes(query));
+  const services = sortServicesByVmid(adminState.services.filter((service) => `${service.name} ${clientEmail(service.clientId)} ${clientName(service.clientId)} ${hardwareSpec(service)} ${service.pveVmid || ""} ${service.internalIp || ""} ${productPublicIp(service)} ${remoteAccessAddress(service)}`.toLowerCase().includes(query)));
   els.adminVmCount.textContent = `${services.length} 台已绑定虚拟机`;
   els.adminVmTable.innerHTML = services.map((service) => {
     const runtime = pveVms.find((vm) => String(vm.vmid) === String(service.pveVmid) && (!service.pveNode || vm.node === service.pveNode));
@@ -1298,7 +1332,7 @@ function renderAdminVmTable() {
     const runningDisabled = runtimeStatus === "stopped" ? " disabled" : "";
     return `<tr>
       <td class="vm-identity"><strong>VM ${escapeHtml(service.pveVmid || "-")}</strong><small>${escapeHtml(service.name)}</small></td>
-      <td>${escapeHtml(clientName(service.clientId))}</td>
+      <td>${escapeHtml(clientEmail(service.clientId))}</td>
       <td>${specBadge(service)}</td>
       <td class="vm-nat"><strong><code>${escapeHtml(productPublicIp(service))}</code></strong><small><code>${escapeHtml(service.internalIp || "未配置")}</code></small></td>
       <td class="vm-access"><strong>${copyControl(natPortRange(service), "端口范围")}</strong><small>${copyControl(remoteAccessAddress(service), "远程桌面地址")}</small></td>
@@ -1307,7 +1341,7 @@ function renderAdminVmTable() {
       <td class="vm-expiry ${remaining <= 7 ? "urgent" : ""}"><strong>${escapeHtml(service.expiresAt || "-")}</strong><small>${escapeHtml(expiryText(service.expiresAt))}</small>${hasExpiryTag && remaining < 0 ? `<span class="expiry-tag">已到期 ${Math.abs(remaining)} 天</span>` : ""}</td>
       <td><div class="vm-extension"><input data-vm-days="${escapeHtml(service.id)}" type="number" min="1" max="3650" step="1" value="3" aria-label="${escapeHtml(service.name)} 延期天数"><button data-admin-extend="${escapeHtml(service.id)}" type="button">增加</button></div></td>
       <td><div class="vm-date-control"><input data-vm-expiry-date="${escapeHtml(service.id)}" type="date" value="${escapeHtml(service.expiresAt || "")}" aria-label="${escapeHtml(service.name)} 指定到期日"><button data-admin-set-expiry="${escapeHtml(service.id)}" type="button">设定</button></div></td>
-      <td><div class="vm-actions"><button class="stats-action" data-resource-stats="${escapeHtml(service.id)}" type="button">统计</button><button data-admin-vm-action="start" data-service-id="${escapeHtml(service.id)}" type="button"${startDisabled}>开机</button><button data-admin-vm-action="shutdown" data-service-id="${escapeHtml(service.id)}" type="button"${runningDisabled}>关机</button><button data-admin-vm-action="reboot" data-service-id="${escapeHtml(service.id)}" type="button"${runningDisabled}>重启</button><button class="force-action" data-admin-vm-action="stop" data-service-id="${escapeHtml(service.id)}" type="button"${runningDisabled}>强制停止</button><button class="vnc-action" data-admin-vnc="${escapeHtml(service.id)}" type="button">VNC</button></div></td>
+      <td><div class="vm-actions"><button class="stats-action" data-resource-stats="${escapeHtml(service.id)}" type="button">统计</button><button data-admin-vm-action="start" data-service-id="${escapeHtml(service.id)}" type="button"${startDisabled}>开机</button><button data-admin-vm-action="shutdown" data-service-id="${escapeHtml(service.id)}" type="button"${runningDisabled}>关机</button><button data-admin-vm-action="reboot" data-service-id="${escapeHtml(service.id)}" type="button"${runningDisabled}>重启</button><button class="force-action" data-admin-vm-action="stop" data-service-id="${escapeHtml(service.id)}" type="button"${runningDisabled}>强制停止</button>${isWindowsPasswordService(service) ? `<button class="password-reset-action" data-reset-vm-password="${escapeHtml(service.id)}" data-reset-mode="admin" type="button">重置密码</button>` : ""}<button class="vnc-action" data-admin-vnc="${escapeHtml(service.id)}" type="button">VNC</button></div></td>
     </tr>`;
   }).join("") || emptyRow(11);
 }
@@ -1354,7 +1388,7 @@ function renderClientServices(clientId) {
   const client = adminState.clients.find((item) => item.id === clientId);
   if (!client) return false;
   const accountUser = clientAccount(clientId);
-  const services = adminState.services.filter((item) => item.clientId === clientId);
+  const services = sortServicesByVmid(adminState.services.filter((item) => item.clientId === clientId));
   els.clientServicesDialog.dataset.clientId = clientId;
   els.clientServicesName.textContent = `${client.name} · ${accountUser?.username || "未创建登录账户"} · ${services.length} 台`;
   els.clientServicesList.innerHTML = services.map((service) => {
@@ -1385,10 +1419,21 @@ async function removeServiceBinding(serviceId) {
   } catch (error) { toast(error.message); }
 }
 
-function generateSecurePassword() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+function generateSecurePassword(length = 16) {
+  const groups = ["ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnopqrstuvwxyz", "23456789", "!@#$%*-_+"];
+  const alphabet = groups.join("");
+  const randomIndex = (size) => {
+    const bytes = new Uint32Array(1);
+    crypto.getRandomValues(bytes);
+    return bytes[0] % size;
+  };
+  const characters = groups.map((group) => group[randomIndex(group.length)]);
+  while (characters.length < length) characters.push(alphabet[randomIndex(alphabet.length)]);
+  for (let index = characters.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomIndex(index + 1);
+    [characters[index], characters[swapIndex]] = [characters[swapIndex], characters[index]];
+  }
+  return characters.join("");
 }
 
 async function removeClient(clientId) {
@@ -1440,7 +1485,7 @@ function applyMailConfig(config) {
   els.mailForm.elements.adminEmail.value = config.adminEmail || "";
   els.mailForm.elements.secure.checked = config.secure !== false;
   els.mailForm.elements.rejectUnauthorized.checked = config.rejectUnauthorized !== false;
-  for (const name of ["notificationsEnabled", "expiry5Enabled", "expiry3Enabled", "deletionWarningEnabled", "purchaseEnabled", "renewalEnabled", "topupEnabled", "unbindEnabled", "adminPurchaseEnabled", "adminExpiryEnabled"]) {
+  for (const name of ["notificationsEnabled", "expiry5Enabled", "expiry3Enabled", "deletionWarningEnabled", "purchaseEnabled", "renewalEnabled", "topupEnabled", "unbindEnabled", "passwordResetEnabled", "adminPurchaseEnabled", "adminExpiryEnabled"]) {
     els.mailForm.elements[name].checked = Boolean(config[name]);
   }
   els.mailStatus.className = `connection-state ${config.configured ? "success" : "warning"}`;
@@ -1646,6 +1691,24 @@ function remotePassword(service) {
   return String(service?.remotePassword || defaultRemotePassword);
 }
 
+function sortServicesByVmid(services) {
+  return [...(services || [])].sort((left, right) => {
+    const leftRaw = String(left?.pveVmid || "").trim();
+    const rightRaw = String(right?.pveVmid || "").trim();
+    const leftNumber = /^\d+$/.test(leftRaw) ? Number(leftRaw) : Number.POSITIVE_INFINITY;
+    const rightNumber = /^\d+$/.test(rightRaw) ? Number(rightRaw) : Number.POSITIVE_INFINITY;
+    if (leftNumber !== rightNumber) return leftNumber - rightNumber;
+    const vmidOrder = leftRaw.localeCompare(rightRaw, undefined, { numeric: true });
+    if (vmidOrder) return vmidOrder;
+    return String(left?.name || "").localeCompare(String(right?.name || ""), "zh-CN");
+  });
+}
+
+function isWindowsPasswordService(service) {
+  if (!service || service.pveType === "lxc") return false;
+  return !/debian|ubuntu|centos|rocky|alma|fedora|linux|freebsd|arch|opensuse/i.test(String(service.os || ""));
+}
+
 function findService(serviceId) {
   return adminState?.services.find((item) => item.id === serviceId)
     || portal?.services.find((item) => item.id === serviceId);
@@ -1663,7 +1726,30 @@ function passwordControl(service) {
 
 function credentialsControl(service, editable = false) {
   const editButton = editable ? `<button class="credential-edit-button" type="button" data-edit-service-credentials="${escapeHtml(service.id)}">编辑凭据</button>` : "";
-  return `<span class="credentials-control"><span>${copyControl(remoteUsername(service), "用户名")}</span><span>${passwordControl(service)}</span>${editButton}</span>`;
+  const sourceLabel = service.passwordResetSource === "client" ? "客户自助" : service.passwordResetSource === "purchase-approval" ? "审核开通" : "管理员";
+  const resetMeta = service.passwordResetAt ? `<small class="credential-reset-meta">最近重置：${escapeHtml(formatTime(service.passwordResetAt))} · ${sourceLabel}</small>` : "";
+  return `<span class="credentials-control"><span>${copyControl(remoteUsername(service), "用户名")}</span><span>${passwordControl(service)}</span>${resetMeta}${editButton}</span>`;
+}
+
+function openVmPasswordReset(serviceId, mode) {
+  const service = findService(serviceId);
+  if (!service) return toast("VPS 服务不存在");
+  if (!isWindowsPasswordService(service)) return toast("该实例不是可重置密码的 Windows KVM/QEMU 虚拟机");
+  const isAdmin = mode === "admin" && session?.role === "admin";
+  els.vmPasswordResetForm.reset();
+  els.vmPasswordResetForm.elements.serviceId.value = service.id;
+  els.vmPasswordResetForm.elements.mode.value = isAdmin ? "admin" : "client";
+  els.vmPasswordResetForm.elements.username.value = remoteUsername(service);
+  els.vmPasswordResetForm.elements.password.value = generateSecurePassword(18);
+  els.vmPasswordResetForm.elements.password.type = "password";
+  els.showVmPasswordReset.checked = false;
+  els.vmPasswordResetTitle.textContent = isAdmin ? "管理员重置 Windows 密码" : "自助重置 Windows 密码";
+  els.vmPasswordResetService.textContent = `${service.name} · VM ${service.pveVmid || "-"}`;
+  els.vmPasswordResetNotice.textContent = isAdmin
+    ? "重置成功后将更新后台保存的当前密码并记录管理员操作，不会向客户发送邮件。"
+    : "重置成功后将更新后台保存的当前密码，并向账户绑定邮箱发送新密码和客户后台地址。";
+  els.vmPasswordResetSubmit.textContent = isAdmin ? "确认重置（不发邮件）" : "确认重置并发送邮件";
+  els.vmPasswordResetDialog.showModal();
 }
 
 function openServiceCredentials(serviceId) {
@@ -1699,6 +1785,16 @@ async function copyText(value, label) {
 
 function clientName(id) {
   return adminState?.clients.find((item) => item.id === id)?.name || "未知客户";
+}
+
+function clientEmail(id) {
+  const client = adminState?.clients.find((item) => item.id === id);
+  const contact = String(client?.contact || "").trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)) return contact;
+
+  const username = String(clientAccount(id)?.username || "").trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username)) return username;
+  return "未绑定邮箱";
 }
 
 function serviceName(id) {

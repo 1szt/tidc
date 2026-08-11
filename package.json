@@ -6,6 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "test": "node --test",
     "build:novnc": "esbuild ./node_modules/@novnc/novnc/lib/rfb.js --bundle --format=esm --platform=browser --outfile=./vendor/novnc.js"
   },
   "engines": {
